@@ -143,6 +143,28 @@ Impacts: payment → inventory
 Total Deployment Blast Radius Risk: 0.272719
 
 ---
+## 📐 Architecture (DeployGuard v1)
+
+DeployGuard v1 is designed as an **out-of-band deployment risk analysis engine**.  
+It does **not sit in the request path** of application services. Instead, it analyzes **observability data** to predict deployment impact **before release**.
+
+The system consumes live latency metrics, computes service-level risk, propagates that risk across dependencies, and produces a deployment safety verdict.
+
+---
+
+### High-Level Architecture
+
+![DeployGuard v1 Architecture](architecture-v1.png)
+
+---
+
+### Architecture Overview
+
+1. **Application Services**  
+   - Order, Payment, and Inventory services form a dependency chain.  
+   - Services expose latency metrics via Spring Actuator.
+
+2. **Observability Layer**
 
 ## Future Enhancements
 
