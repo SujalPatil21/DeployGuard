@@ -1,30 +1,55 @@
-import pandas as pd
-from dependency_graph import get_upstream_chain
+# impact_report.py
+"""
+Impact report generator for DeployGuard v1.
 
-SERVICE_MAP = {
-    "/inventory/check": "inventory",
-    "/payment/pay": "payment",
-    "/order/create": "order"
-}
+Purpose:
+- Combine latency, base risk, propagated risk, and explanations
+- Produce a clean, structured report
+- No printing, no I/O
+"""
 
-df = pd.read_csv("data/raw/latency_snapshot.csv")
 
-latest = df.groupby("service").tail(1).set_index("service")
+def generate_report(
+    service_name: str,
+    latency: dict,
+    base_risk: dict,
+    final_risk: dict,
+    explanation: dict
+) -> dict:
+    """
+    Generate the final deploy impact report.
 
-print("\n===== DEPLOY IMPACT REPORT =====\n")
+    Args:
+        service_name (str): Service being deployed
+        latency (dict): Observed latency per service
+        base_risk (dict): Base risk per service
+        final_risk (dict): Propagated risk per service
+        explanation (dict): Explanation per service
 
-for endpoint, row in latest.iterrows():
+    Returns:
+        dict: Structured deploy impact report
+    """
 
-    service_name = SERVICE_MAP[endpoint]
-    risk = row["latency_sum"]
-    upstream = get_upstream_chain(service_name)
+    impacted_services = {
+        svc: risk
+        for svc, risk in final_risk.items()
+        if svc != service_name and risk > 0
+    }
 
-    print("Service:", endpoint)
-    print("Risk Score:", round(risk, 6))
+    return {
+        "service": service_name,
+        "latency": latency,
+        "base_risk": base_risk,
+        "final_risk": final_risk,
+        "blast_radius": impacted_services,
+        "explanation": explanation
+    }
+def decide_verdict(final_risk):
+    max_risk = max(final_risk.values())
 
-    if upstream:
-        print("Impacted By:", upstream)
+    if max_risk >= 0.7:
+        return "BLOCK"
+    elif max_risk >= 0.4:
+        return "WARN"
     else:
-        print("Impacted By: None")
-
-    print("---------------------------")
+        return "SAFE"

@@ -13,7 +13,7 @@ QUERY = """
     rate(http_server_requests_seconds_sum{
       uri!="/actuator/prometheus",
       uri!="/**"
-    }[30s])
+    }[1m])
   )
 )
 /
@@ -22,12 +22,10 @@ QUERY = """
     rate(http_server_requests_seconds_count{
       uri!="/actuator/prometheus",
       uri!="/**"
-    }[30s])
+    }[1m])
   )
 )
 """
-
-
 
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
