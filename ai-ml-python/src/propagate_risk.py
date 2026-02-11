@@ -1,24 +1,28 @@
-import pandas as pd
-from dependency_graph import get_impact_chain
+# propagate_risk.py
 
-df = pd.read_csv("data/raw/latency_snapshot.csv")
+DEPENDENCIES = {
+    "order": ["payment"],
+    "payment": ["inventory"],
+    "inventory": []
+}
 
-latest = df.groupby("service").last()["latency_sum"]
+def propagate_risk(base_risk, source_service):
+    # Start with base risk
+    final_risk = dict(base_risk)
 
-risk_scores = latest.copy()
+    # BFS for risk propagation
+    queue = [(source_service, 0)]
 
-for service in latest.index:
-    svc = service.split("/")[1]   # convert /payment/pay → payment
-    impacted = get_impact_chain(svc)
+    while queue:
+        current, depth = queue.pop(0)
 
-    for imp in impacted:
-        key = f"/{imp}"
-        for existing in risk_scores.index:
-            if imp in existing:
-                risk_scores[existing] += latest[service] * 0.5
+        for child in DEPENDENCIES[current]:
+            propagated = final_risk[current] * (1 / (depth + 2))
+            final_risk[child] += propagated
+            queue.append((child, depth + 1))
 
-print("\nBase Risk:")
-print(latest)
+    # Clamp risk to [0, 1]
+    for service in final_risk:
+        final_risk[service] = min(final_risk[service], 1.0)
 
-print("\nPropagated Risk:")
-print(risk_scores.sort_values(ascending=False))
+    return final_risk
