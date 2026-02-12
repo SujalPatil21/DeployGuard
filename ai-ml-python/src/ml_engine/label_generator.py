@@ -9,7 +9,6 @@ INPUT_PATH = os.path.join(PROJECT_ROOT, "data", "processed", "feature_snapshot.c
 OUTPUT_PATH = os.path.join(PROJECT_ROOT, "data", "processed", "labeled_dataset.csv")
 
 
-# MUST match normalized service names
 DEPENDENCIES = {
     "order": ["payment"],
     "payment": ["inventory"],
@@ -19,36 +18,30 @@ DEPENDENCIES = {
 
 def load_data():
     df = pd.read_csv(INPUT_PATH)
-
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
     df = df.sort_values(["service", "timestamp"])
-
     return df
 
 
-def detect_spike(row):
-    threshold = row["rolling_mean"] + 1 * row["rolling_std"]
+def detect_spike(row, z_threshold=1.5):
+    if row["rolling_std"] == 0:
+        return False
 
-    return (
-        row["latency_delta"] > threshold and
-        row["latency_delta"] > 0.05
-    )
+    z_score = (row["latency"] - row["rolling_mean"]) / row["rolling_std"]
+    return z_score > z_threshold
 
 
 def generate_labels(df):
     df["failure"] = 0
-
     time_window = pd.Timedelta(seconds=60)
 
-    grouped = df.groupby("service")
+    for service in df["service"].unique():
 
-    for service, group in grouped:
+        service_rows = df[df["service"] == service]
 
         downstream_services = DEPENDENCIES.get(service, [])
 
-        for i in range(len(group)):
-
-            current_row = group.iloc[i]
+        for idx, current_row in service_rows.iterrows():
 
             if detect_spike(current_row):
 
@@ -62,9 +55,11 @@ def generate_labels(df):
                         (df["timestamp"] <= timestamp + time_window)
                     ]
 
-                    for _, row in downstream_rows.iterrows():
-                        if detect_spike(row):
-                            df.loc[current_row.name, "failure"] = 1
+                    # If ANY downstream latency increases meaningfully
+                    for _, downstream_row in downstream_rows.iterrows():
+
+                        if downstream_row["latency"] > downstream_row["rolling_mean"]:
+                            df.loc[idx, "failure"] = 1
                             break
 
     return df

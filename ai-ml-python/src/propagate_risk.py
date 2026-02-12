@@ -1,28 +1,64 @@
-# propagate_risk.py
+import pandas as pd
+from dependency_graph import get_upstream_chain
 
-DEPENDENCIES = {
-    "order": ["payment"],
-    "payment": ["inventory"],
-    "inventory": []
-}
+FEATURE_PATH = "data/processed/feature_snapshot.csv"
 
-def propagate_risk(base_risk, source_service):
-    # Start with base risk
-    final_risk = dict(base_risk)
 
-    # BFS for risk propagation
-    queue = [(source_service, 0)]
+def load_latest_state():
+    df = pd.read_csv(FEATURE_PATH)
 
-    while queue:
-        current, depth = queue.pop(0)
+    if "risk_score" not in df.columns:
+        raise ValueError("Run detect_latency_anomaly.py first.")
 
-        for child in DEPENDENCIES[current]:
-            propagated = final_risk[current] * (1 / (depth + 2))
-            final_risk[child] += propagated
-            queue.append((child, depth + 1))
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
 
-    # Clamp risk to [0, 1]
-    for service in final_risk:
-        final_risk[service] = min(final_risk[service], 1.0)
+    latest = df.sort_values("timestamp").groupby("service").tail(1)
+
+    return latest
+
+
+def propagate_risk(latest_df, decay=0.6, spike_boost=1.2):
+
+    final_risk = {}
+
+    # Step 1: Base risk from anomaly engine
+    for _, row in latest_df.iterrows():
+        service = row["service"]
+
+        base_risk = row["risk_score"]
+
+        # Boost risk if true spike
+        if row["is_spike"] == 1:
+            base_risk *= spike_boost
+
+        base_risk = min(base_risk, 1.0)
+
+        final_risk[service] = base_risk
+
+    # Step 2: Propagate upstream
+    for service, base_risk in list(final_risk.items()):
+
+        if base_risk > 0:
+            upstream_services = get_upstream_chain(service)
+
+            for upstream in upstream_services:
+                propagated = base_risk * decay
+                final_risk[upstream] = max(
+                    final_risk.get(upstream, 0),
+                    propagated
+                )
 
     return final_risk
+
+
+def main():
+    latest = load_latest_state()
+    final_risk = propagate_risk(latest)
+
+    print("\n===== PROPAGATED RISK =====")
+    for svc, risk in final_risk.items():
+        print(f"{svc}: {risk:.4f}")
+
+
+if __name__ == "__main__":
+    main()
