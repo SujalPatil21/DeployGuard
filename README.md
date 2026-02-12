@@ -143,10 +143,11 @@ Impacts: payment → inventory
 Total Deployment Blast Radius Risk: 0.272719
 
 ---
-## 📐 Architecture (DeployGuard v1)
 
-DeployGuard v1 is designed as an **out-of-band deployment risk analysis engine**.  
-It does **not sit in the request path** of application services. Instead, it analyzes **observability data** to predict deployment impact **before release**.
+## Architecture (DeployGuard v1)
+
+DeployGuard v1 is designed as an out-of-band deployment risk analysis engine.  
+It does not sit in the request path of application services. Instead, it analyzes observability data to predict deployment impact before release.
 
 The system consumes live latency metrics, computes service-level risk, propagates that risk across dependencies, and produces a deployment safety verdict.
 
@@ -160,11 +161,88 @@ The system consumes live latency metrics, computes service-level risk, propagate
 
 ### Architecture Overview
 
-1. **Application Services**  
+1. Application Services  
    - Order, Payment, and Inventory services form a dependency chain.  
    - Services expose latency metrics via Spring Actuator.
 
-2. **Observability Layer**
+2. Observability Layer  
+
+---
+
+## Architecture (DeployGuard v2)
+
+DeployGuard v2 introduces a statistical risk intelligence engine that performs rolling anomaly detection, probabilistic risk scoring, and dependency-aware risk propagation before deployment.
+
+Unlike v1, which focused primarily on telemetry ingestion and baseline analysis, v2 adds:
+
+- Rolling window statistical modeling
+- Z-score anomaly detection
+- Continuous probabilistic risk scoring
+- Dependency-based risk propagation with decay
+- Automated SAFE / WARN / BLOCK verdict engine
+
+The system now behaves as a pre-deployment risk firewall powered by statistical analysis.
+
+---
+
+### High-Level Architecture
+
+![DeployGuard v2 Architecture](architecture-v2.png)
+
+---
+
+### Architecture Overview
+
+1. Application Services  
+   - Order → Payment → Inventory service chain  
+   - Metrics exposed via Spring Actuator  
+
+2. Observability Layer  
+   - Prometheus scrapes latency metrics  
+   - PromQL used to compute request rate averages  
+
+3. Data Ingestion Layer  
+   - fetch_metrics.py collects latency metrics  
+   - Rectangular time-series enforcement ensures data consistency  
+   - Latency snapshots stored in CSV  
+
+4. Feature Engineering Layer  
+   - Rolling mean and rolling standard deviation (window = 20)  
+   - Latency delta computation  
+   - Time-based sorting and normalization  
+
+5. Anomaly Detection Engine  
+   - Z-score computation  
+   - Safe standard deviation handling  
+   - Sigmoid-based risk scoring  
+   - Spike detection with configurable threshold  
+
+6. Risk Propagation Engine  
+   - Dependency graph modeling (NetworkX)  
+   - Upstream risk propagation  
+   - Decay-based transmission  
+   - Spike amplification logic  
+
+7. Decision Layer  
+   - Blast radius computation  
+   - Risk explanation generation  
+   - Deployment verdict: SAFE / WARN / BLOCK  
+
+---
+
+### What Changed from v1 to v2
+
+| Capability | v1 | v2 |
+|------------|----|----|
+| Latency Monitoring | Basic | Rolling Statistical |
+| Anomaly Detection | Threshold-Based | Z-Score |
+| Risk Modeling | Binary | Continuous Probabilistic |
+| Propagation | Basic | Decay-Based Graph Propagation |
+| Deployment Verdict | Manual Interpretation | Automated |
+
+DeployGuard v2 marks the transition from a monitoring prototype to a structured statistical deployment risk intelligence engine.
+
+---
 
 ## Future Enhancements
 
