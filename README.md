@@ -256,12 +256,11 @@ DeployGuard v2 marks the transition from a monitoring prototype to a structured 
 
 ## Author
 
-Sujal
+**Sujal Patil**  
 
-Engineering Student focused on distributed systems, cloud reliability, and platform engineering.
-
-GitHub: https://github.com/your-username  
-LinkedIn: https://linkedin.com/in/your-profile
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat&logo=github&logoColor=white)](https://github.com/SujalPatil21)
+[![LinkedIn](https://img.shields.io/badge/LinkedIn-0A66C2?style=flat&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/sujalbpatil21)
+[![Email](https://img.shields.io/badge/Email-D14836?style=flat&logo=gmail&logoColor=white)](mailto:sujalpatil21@gmail.com)
 
 ---
 
