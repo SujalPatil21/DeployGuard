@@ -169,7 +169,7 @@ The system consumes live latency metrics, computes service-level risk, propagate
 
 ---
 
-## Architecture (DeployGuard v2)
+## Architecture (DeployGuard v2) (Status - 80 % Complete)
 
 DeployGuard v2 introduces a statistical risk intelligence engine that performs rolling anomaly detection, probabilistic risk scoring, and dependency-aware risk propagation before deployment.
 
