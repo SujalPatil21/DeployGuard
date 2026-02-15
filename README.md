@@ -168,20 +168,13 @@ The system consumes live latency metrics, computes service-level risk, propagate
 2. Observability Layer  
 
 ---
+## Architecture (DeployGuard v2)
 
-## Architecture (DeployGuard v2) (Status - 80 % Complete)
+DeployGuard v2 introduces a modular, graph-aware statistical risk engine that performs rolling anomaly detection, probabilistic risk scoring, and dependency-aware risk propagation before deployment.
 
-DeployGuard v2 introduces a statistical risk intelligence engine that performs rolling anomaly detection, probabilistic risk scoring, and dependency-aware risk propagation before deployment.
+Unlike v1, which focused primarily on telemetry ingestion and threshold-based monitoring, v2 adds structured statistical modeling and automated deployment verdict generation.
 
-Unlike v1, which focused primarily on telemetry ingestion and baseline analysis, v2 adds:
-
-- Rolling window statistical modeling
-- Z-score anomaly detection
-- Continuous probabilistic risk scoring
-- Dependency-based risk propagation with decay
-- Automated SAFE / WARN / BLOCK verdict engine
-
-The system now behaves as a pre-deployment risk firewall powered by statistical analysis.
+The system operates as an out-of-band risk analysis engine that evaluates deployment impact before release.
 
 ---
 
@@ -193,40 +186,94 @@ The system now behaves as a pre-deployment risk firewall powered by statistical 
 
 ### Architecture Overview
 
-1. Application Services  
-   - Order → Payment → Inventory service chain  
-   - Metrics exposed via Spring Actuator  
+#### 1. Application Services (Java Layer)
 
-2. Observability Layer  
-   - Prometheus scrapes latency metrics  
-   - PromQL used to compute request rate averages  
+- Order, Payment, and Inventory microservices  
+- Built using Spring Boot  
+- Metrics exposed via Micrometer and Spring Actuator  
+- `/actuator/prometheus` endpoint exports latency metrics  
 
-3. Data Ingestion Layer  
-   - fetch_metrics.py collects latency metrics  
-   - Rectangular time-series enforcement ensures data consistency  
-   - Latency snapshots stored in CSV  
+---
 
-4. Feature Engineering Layer  
-   - Rolling mean and rolling standard deviation (window = 20)  
-   - Latency delta computation  
-   - Time-based sorting and normalization  
+#### 2. Observability Layer
 
-5. Anomaly Detection Engine  
-   - Z-score computation  
-   - Safe standard deviation handling  
-   - Sigmoid-based risk scoring  
-   - Spike detection with configurable threshold  
+- Prometheus scrapes latency metrics from services  
+- PromQL computes request rate and latency statistics  
+- Prometheus HTTP API queried by DeployGuard ingestion layer  
 
-6. Risk Propagation Engine  
-   - Dependency graph modeling (NetworkX)  
-   - Upstream risk propagation  
-   - Decay-based transmission  
-   - Spike amplification logic  
+---
 
-7. Decision Layer  
-   - Blast radius computation  
-   - Risk explanation generation  
-   - Deployment verdict: SAFE / WARN / BLOCK  
+#### 3. Data Ingestion Layer
+
+- `fetch_metrics.py`  
+- Queries Prometheus API  
+- Extracts service-level latency metrics  
+- Enforces rectangular time-series structure  
+- Stores raw snapshots in `data/raw/latency_snapshot.csv`  
+
+---
+
+#### 4. Feature Engineering Layer
+
+- `feature_engineering.py`  
+- Computes:
+  - Latency delta  
+  - Rolling mean (window = 3)  
+  - Rolling standard deviation  
+- Sorts and normalizes time-series data  
+- Outputs processed snapshot to `data/processed/feature_snapshot.csv`  
+
+---
+
+#### 5. Hybrid Anomaly Detection Engine
+
+- `detect_latency_anomaly.py`  
+- Performs:
+  - Z-score computation  
+  - Delta-based fallback detection for sparse data  
+  - Sigmoid-based probabilistic risk scoring  
+- Outputs:
+  - `z_score`  
+  - `is_spike` flag  
+  - `risk_score`  
+
+This approach allows anomaly detection to function even with limited historical data.
+
+---
+
+#### 6. Service Risk Engine
+
+- `compute_service_risk()`  
+- Converts anomaly signals into service-level base risk  
+- Produces normalized risk scores per service  
+
+---
+
+#### 7. Dependency Graph & Risk Propagation
+
+- `dependency_graph.py` loads service topology from configuration  
+- Graph implemented using NetworkX `DiGraph`  
+- `propagate_risk.py` performs:
+  - Upstream risk propagation  
+  - Decay-based transmission  
+  - Blast radius estimation  
+
+Risk spreads across dependencies to model potential cascading impact.
+
+---
+
+#### 8. Decision & Reporting Layer
+
+- `explain_risk.py` generates structured reasoning  
+- `impact_report.py` produces deployment impact summary  
+- Automated deployment verdict:
+  - SAFE  
+  - WARN  
+  - BLOCK  
+
+Supports:
+- Human-readable CLI output  
+- JSON output for CI/CD automation  
 
 ---
 
@@ -234,13 +281,16 @@ The system now behaves as a pre-deployment risk firewall powered by statistical 
 
 | Capability | v1 | v2 |
 |------------|----|----|
-| Latency Monitoring | Basic | Rolling Statistical |
-| Anomaly Detection | Threshold-Based | Z-Score |
+| Latency Monitoring | Static Snapshot | Rolling Statistical Modeling |
+| Anomaly Detection | Threshold-Based | Hybrid Z-Score + Delta |
 | Risk Modeling | Binary | Continuous Probabilistic |
-| Propagation | Basic | Decay-Based Graph Propagation |
+| Propagation | Basic | Graph-Based Decay Propagation |
 | Deployment Verdict | Manual Interpretation | Automated |
+| Automation Support | CLI Only | CLI + JSON Mode |
 
-DeployGuard v2 marks the transition from a monitoring prototype to a structured statistical deployment risk intelligence engine.
+---
+
+DeployGuard v2 represents the transition from a monitoring prototype to a structured statistical deployment risk analysis system.
 
 ---
 

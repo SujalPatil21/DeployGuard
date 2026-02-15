@@ -1,0 +1,4 @@
+[
+    ["order", "payment"],
+    ["payment", "inventory"]
+]
