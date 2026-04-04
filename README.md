@@ -323,3 +323,19 @@ Long-term objective:
 - Enterprise-level deployment safety system
 - AI-driven incident prevention engine
 - Intelligent release-gating platform
+
+## Project Status: Discontinued
+
+This project is no longer actively maintained.
+
+Reason:
+The current implementation does not align with the intended long-term direction and would require a significant redesign rather than incremental improvements.
+
+What this means:
+- No further updates or features will be added
+- Issues and pull requests may not be reviewed
+
+Next Steps:
+Active development has shifted to newer projects with a stronger focus on scalable backend systems and real-world applicability.
+
+Please refer to the pinned repositories for ongoing work.
